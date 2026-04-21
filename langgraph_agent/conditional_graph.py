@@ -48,14 +48,26 @@ def router_node(state: GraphState) -> GraphState:
     is_subject_confirm = any(
         p in input_text for p in ["我指的是", "我说的是", "指的是"]
     )
+
     has_pronoun = any(p in input_text for p in ["它", "这个", "那个", "这"])
 
+    # --- 新增：能力/用途型问题 ---
+    is_capability_question = any(
+        p in input_text for p in ["能", "可以", "用途", "做什么", "有什么用"]
+    )
+
     need_clarify = has_pronoun and not last_subject and not is_subject_confirm
+
+    # ✅ 关键修复：memory + 能力型问题 → Knowledge Agent
     need_rag = (
         not need_clarify
         and not is_subject_confirm
-        and any(p in input_text for p in ["是什么", "介绍"])
+        and (
+            any(p in input_text for p in ["是什么", "介绍"])
+            or (last_subject and is_capability_question)
+        )
     )
+
     need_search = (
         not need_clarify
         and not is_subject_confirm
@@ -84,7 +96,6 @@ def router_node(state: GraphState) -> GraphState:
         "need_rag": need_rag,
         "need_search": need_search,
     }
-
 
 def memory_update_node(state: GraphState) -> GraphState:
     trace = state["trace"]
