@@ -11,6 +11,28 @@ The goal is to demonstrate how to build an LLM Agent that is **controllable, exp
 
 The system is implemented as a **single‑agent architecture (v1.0)** and designed to evolve naturally into **multi‑agent systems** in later versions.
 
+
+
+📦 **Current version**:
+- v1.0 – Single‑Agent Architecture (tagged)  
+- v2.0 – Multi‑Agent Coordinator System (tagged)  
+
+---
+## 🧭 Architecture Evolution (v1.0 → v2.0)
+
+This project intentionally evolves in stages:
+
+- **v1.0** focuses on building a *correct* single‑agent system with explicit state,
+  memory slots, RAG, explainability, and deterministic testing.
+
+- **v2.0** introduces a *multi‑agent architecture* with a central Coordinator that
+  orchestrates specialized agents (Knowledge Agent, Search Agent),
+  enabling better modularity, scalability, and responsibility isolation.
+
+📘 A detailed comparison between v1.0 and v2.0 is documented here:
+
+👉 [`docs/LangGraph_Agent_v1_vs_v2_Architecture.md`](docs/LangGraph_Agent_v1_vs_v2_Architecture.md)
+
 ---
 
 ## 🎯 Design Goals
@@ -226,23 +248,43 @@ This ensures the system is **regression‑safe**.
 
 ---
 
-## ✅ Current Status (v1.0)
+## ✅ Current Status
+
+### v1.0 – Single‑Agent (Stable, Tagged)
 
 - [x] Single‑agent LangGraph system
-- [x] Explicit state modeling
-- [x] Structured memory slots
-- [x] RAG integration
-- [x] Explainable trace & replay
-- [x] pytest coverage
+- [x] Explicit state modeling (Conversation / Derived / Working State)
+- [x] Structured memory slots (`last_subject`)
+- [x] RAG integration as a graph path
+- [x] Explainable execution trace & replay
+- [x] Deterministic pytest coverage
+
+_Tag: v1.0-single-agent_
+
+---
+
+### v2.0 – Multi‑Agent Coordinator (Feature Branch, Tagged)
+
+- [x] Central Coordinator Agent
+- [x] Knowledge Agent (RAG)
+- [x] Search Agent (tool‑based)
+- [x] Memory‑aware semantic routing
+- [x] Agent dispatch recorded in trace
+- [x] Multi‑agent pytest coverage
+
+_Tag: v2.0-multi-agent_
+
 
 ---
 
 ## 🚧 Roadmap
 
-- [ ] Multi‑Agent Coordinator (Planner + Functional Agents)
-- [ ] Agent‑to‑Agent communication
-- [ ] Verification / Critic Agents
-- [ ] Governance & policy enforcement
+- ✅ v1.0 – Single‑Agent LangGraph system (explicit state, memory, RAG)
+- ✅ v2.0 – Multi‑Agent Coordinator with functional agents
+- ⏳ v3.0 – Planner Agent (task decomposition)
+- ⏳ v4.0 – Critic / Verifier Agents
+- ⏳ Agent‑to‑Agent communication & governance
+
 
 ---
 
