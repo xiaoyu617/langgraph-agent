@@ -75,6 +75,17 @@ def router_node(state: GraphState) -> GraphState:
         and any(p in input_text for p in ["搜索", "官网", "查"])
     )
 
+    is_complex_task = (
+            "并" in input_text
+            or "同时" in input_text
+            or "分别" in input_text
+            or "步骤" in input_text
+            or "比较" in input_text
+    )
+
+    need_plan = is_complex_task
+
+
     trace.append({
         "node": "router",
         "input": input_text,
@@ -83,7 +94,8 @@ def router_node(state: GraphState) -> GraphState:
             "subject_confirm": is_subject_confirm,
             "clarify": need_clarify,
             "rag": need_rag,
-            "search": need_search
+            "search": need_search,
+            "need_plan": need_plan
         }
     })
 
@@ -95,6 +107,7 @@ def router_node(state: GraphState) -> GraphState:
         "need_clarify": need_clarify,
         "need_rag": need_rag,
         "need_search": need_search,
+        "need_plan": need_plan
     }
 
 def memory_update_node(state: GraphState) -> GraphState:
