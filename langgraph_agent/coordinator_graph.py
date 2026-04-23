@@ -18,6 +18,7 @@ from langgraph_agent.agents.search_agent import run_search_agent
 from langgraph_agent.agents.planner_agent import run_planner_agent
 from langgraph_agent.planner_executor import execute_plan
 
+from langgraph_agent.agents.critic_agent import run_critic_agent
 
 def coordinator_dispatch_node(state: GraphState) -> GraphState:
     trace = state["trace"]
@@ -55,24 +56,82 @@ def planner_node(state: GraphState) -> GraphState:
     input_text = state["input"]
     last_subject = state.get("last_subject")
 
+    # ===== Attempt 1 =====
     plan = run_planner_agent(input_text)
     results = execute_plan(plan, last_subject)
+    attempt_output = "\n".join(r["output"] for r in results)
+
+    critic_1 = run_critic_agent(
+        user_input=input_text,
+        plan=plan,
+        execution_results=results,
+        final_output=attempt_output,
+    )
 
     trace.append({
         "node": "planner",
+        "attempt": 1,
         "plan": plan,
-        "results": results
+        "results": results,
+    })
+    trace.append({
+        "node": "critic",
+        "attempt": 1,
+        "verdict": critic_1["verdict"],
+        "reason": critic_1["reason"],
     })
 
-    final_output = "\n".join(
-        r["output"] for r in results
+    # ✅ 如果第一次就通过，直接返回
+    if critic_1["verdict"] == "pass":
+        return {
+            "input": input_text,
+            "last_subject": last_subject,
+            "output": attempt_output,
+            "trace": trace,
+        }
+
+    # ===== Attempt 2 (Replan) =====
+    replan = run_planner_agent(
+        input_text,
+        failure_reason=critic_1["reason"]
     )
+    replan_results = execute_plan(replan, last_subject)
+    replan_output = "\n".join(
+        r["output"] for r in replan_results
+    )
+
+    critic_2 = run_critic_agent(
+        user_input=input_text,
+        plan=replan,
+        execution_results=replan_results,
+        final_output=replan_output,
+    )
+
+    trace.append({
+        "node": "planner",
+        "attempt": 2,
+        "replan": True,
+        "plan": replan,
+        "results": replan_results,
+    })
+    trace.append({
+        "node": "critic",
+        "attempt": 2,
+        "verdict": critic_2["verdict"],
+        "reason": critic_2["reason"],
+    })
+
+    # ✅ Replan 成功 → 覆盖第一次失败结果
+    if critic_2["verdict"] == "pass":
+        final_output = replan_output
+    else:
+        final_output = f"⚠️ 多次尝试仍未通过审查：{critic_2['reason']}"
 
     return {
         "input": input_text,
         "last_subject": last_subject,
         "output": final_output,
-        "trace": trace
+        "trace": trace,
     }
 
 

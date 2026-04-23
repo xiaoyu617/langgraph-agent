@@ -209,6 +209,10 @@ _Tag: v2.0-multi-agent_
 
 _Tag: v3.0-planner-agent_
 
+Note:
+v3.1 introduces the Critic / Verifier Agent as a quality control layer.
+v3.2 further extends v3.1 with automatic replanning based on Critic feedback.
+
 ---
 
 ## 🚧 Roadmap
