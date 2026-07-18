@@ -1,0 +1,21 @@
+# 旧版评测工作流 — 已迁移到 ci-cd.yml
+# 保留仅用于手动触发测试
+name: Evaluation (Manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests/ -v --tb=short
+      - name: Run evaluation
+        env:
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+        run: python run_eval.py --report eval-report.json

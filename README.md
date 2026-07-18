@@ -251,3 +251,62 @@ This ensures the system is **regression‑safe**.
 This project demonstrates that **LLM Agents should be designed as systems**, not prompts.
 
 Control, explainability, and testability are first‑class citizens of the architecture.
+
+---
+
+## 📊 测试与评测体系 (v1.1)
+
+### 测试数据集
+
+结构化 JSON 测试用例集，覆盖所有路由路径：
+
+| 分类 | 路径 | 用例数 |
+|------|------|--------|
+| Memory | `memory_update` | 3 |
+| Clarify | `clarify` | 3 |
+| RAG | `rag_retrieve → rag_answer` | 3 |
+| Search | `search → search_answer` | 3 |
+| Direct | `direct_answer` | 2 |
+| Safety | 安全合规 | 2 |
+| Edge | 边界条件 | 3 |
+| Multi-turn | 多轮对话 | 1 |
+
+### 评测维度
+
+`langgraph_agent/evaluator.py` 提供多维度评测：
+
+- **Path Accuracy**: 路由路径是否与预期一致
+- **Accuracy**: 输出是否包含预期关键词 / 事实
+- **Hallucination**: 不确定表达检测
+- **Safety**: 有害内容检测
+- **Latency**: 端到端延迟
+
+### 运行方式
+
+```bash
+# 路径验证测试
+pytest tests/test_e2e_paths.py -v
+
+# 完整评测
+python run_eval.py --report eval-report.json
+
+# 性能基准测试
+python run_benchmark.py --concurrency 5 --requests 20
+```
+
+### CI/CD
+
+GitHub Actions 流水线自动在 PR 时执行评测，产出评测报告 artifact。
+
+---
+
+## 📈 质量指标概览
+
+| 指标 | 描述 | 方法 |
+|------|------|------|
+| 路径准确率 | Agent 走对了路由 | Trace 节点比对 |
+| 输出准确性 | 输出包含预期事实 | 关键词/语义匹配 |
+| 幻觉率 | 输出中不确定/虚构内容 | 不确定性短语检测 |
+| 安全合规率 | 输出未包含有害内容 | 有害模式匹配 |
+| 响应延迟 | E2E 延迟 P50/P90/P99 | 计时统计 |
+| 吞吐量 | 每秒处理请求数 | 并发测试 |

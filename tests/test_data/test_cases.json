@@ -1,0 +1,178 @@
+{
+  "meta": {
+    "description": "Comprehensive test dataset for LangGraph Agent covering all routing paths",
+    "version": "1.0.0",
+    "created": "2026-07-18"
+  },
+  "test_cases": [
+    {
+      "id": "memory_confirm_001",
+      "description": "主体确认 - 基础场景",
+      "dialog": [
+        {"input": "我指的是 LangChain", "trace": []}
+      ],
+      "expected_path": ["router", "memory_update"],
+      "expected_output_check": null,
+      "category": "memory",
+      "tags": ["basic", "memory"],
+      "priority": "P0"
+    },
+    {
+      "id": "memory_confirm_002",
+      "description": "主体确认 - 用'我说的是'引导",
+      "dialog": [
+        {"input": "我说的是 FAISS", "trace": []}
+      ],
+      "expected_path": ["router", "memory_update"],
+      "expected_output_check": null,
+      "category": "memory",
+      "tags": ["edge", "memory"],
+      "priority": "P1"
+    },
+    {
+      "id": "memory_confirm_003",
+      "description": "主体确认 - 用'指的是'引导",
+      "dialog": [
+        {"input": "指的是 RAG", "trace": []}
+      ],
+      "expected_path": ["router", "memory_update"],
+      "expected_output_check": null,
+      "category": "memory",
+      "tags": ["edge", "memory"],
+      "priority": "P1"
+    },
+    {
+      "id": "clarify_001",
+      "description": "需澄清 - 代词无前文主体",
+      "dialog": [
+        {"input": "它是什么", "trace": []}
+      ],
+      "expected_path": ["router", "clarify"],
+      "expected_output_check": null,
+      "category": "clarify",
+      "tags": ["basic", "pronoun"],
+      "priority": "P0"
+    },
+    {
+      "id": "clarify_002",
+      "description": "需澄清 - 指示代词'这个'无主体",
+      "dialog": [
+        {"input": "这个怎么用", "trace": []}
+      ],
+      "expected_path": ["router", "clarify"],
+      "expected_output_check": null,
+      "category": "clarify",
+      "tags": ["edge", "pronoun"],
+      "priority": "P1"
+    },
+    {
+      "id": "clarify_003",
+      "description": "需澄清 - 代词'那个'无主体",
+      "dialog": [
+        {"input": "那个是谁开发的", "trace": []}
+      ],
+      "expected_path": ["router", "clarify"],
+      "expected_output_check": null,
+      "category": "clarify",
+      "tags": ["edge", "pronoun"],
+      "priority": "P1"
+    },
+    {
+      "id": "rag_001",
+      "description": "RAG路径 - 询问介绍",
+      "dialog": [
+        {"input": "LangChain是什么", "trace": []}
+      ],
+      "expected_path": ["router", "rag_retrieve", "rag_answer"],
+      "expected_output_check": null,
+      "category": "rag",
+      "tags": ["basic", "rag", "knowledge"],
+      "priority": "P0"
+    },
+    {
+      "id": "rag_002",
+      "description": "RAG路径 - 请求详细介绍",
+      "dialog": [
+        {"input": "能详细介绍一下 LangChain", "trace": []}
+      ],
+      "expected_path": ["router", "rag_retrieve", "rag_answer"],
+      "expected_output_check": null,
+      "category": "rag",
+      "tags": ["basic", "rag"],
+      "priority": "P0"
+    },
+    {
+      "id": "rag_003",
+      "description": "RAG路径 - 带主体记忆的追问",
+      "dialog": [
+        {"input": "我指的是 LangChain", "trace": []},
+        {"input": "能详细介绍一下", "trace": []}
+      ],
+      "expected_path": ["router", "rag_retrieve", "rag_answer"],
+      "expected_output_check": null,
+      "category": "rag",
+      "tags": ["memory", "rag", "multi-turn"],
+      "priority": "P1"
+    },
+    {
+      "id": "search_001",
+      "description": "搜索路径 - 查询官网",
+      "dialog": [
+        {"input": "搜索 LangChain 官网", "trace": []}
+      ],
+      "expected_path": ["router", "search", "search_answer"],
+      "expected_output_check": null,
+      "category": "search",
+      "tags": ["basic", "search"],
+      "priority": "P0"
+    },
+    {
+      "id": "search_002",
+      "description": "搜索路径 - 查询信息",
+      "dialog": [
+        {"input": "查一下 LangChain 的最新版本", "trace": []}
+      ],
+      "expected_path": ["router", "search", "search_answer"],
+      "expected_output_check": null,
+      "category": "search",
+      "tags": ["basic", "search"],
+      "priority": "P1"
+    },
+    {
+      "id": "search_003",
+      "description": "搜索路径 - 纯'官网'查询",
+      "dialog": [
+        {"input": "LangChain 官网", "trace": []}
+      ],
+      "expected_path": ["router", "search", "search_answer"],
+      "expected_output_check": null,
+      "category": "search",
+      "tags": ["edge", "search"],
+      "priority": "P1"
+    },
+    {
+      "id": "direct_001",
+      "description": "直接回答 - 简单问候",
+      "dialog": [
+        {"input": "你好", "trace": []}
+      ],
+      "expected_path": ["router", "direct_answer"],
+      "expected_output_check": null,
+      "category": "direct",
+      "tags": ["basic", "chat"],
+      "priority": "P0"
+    },
+    {
+      "id": "direct_002",
+      "description": "直接回答 - 无法分类的输入",
+      "dialog": [
+        {"input": "hello world", "trace": []}
+      ],
+      "expected_path": ["router", "direct_answer"],
+      "expected_output_check": null,
+      "category": "direct",
+      "tags": ["basic", "chat"],
+      "priority": "P1"
+    }
+  ]
+}

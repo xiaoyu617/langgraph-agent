@@ -1,0 +1,219 @@
+# ============================================================
+# LangGraph Agent 全流程 CI/CD 流水线
+#
+# 触发条件:
+#   - PR → main/master: 运行 CI（测试 + 构建验证）
+#   - Push → main/master: 运行 CI + 部署 + E2E + 正式发布
+#
+# 流程:
+#   test → build → deploy-staging → e2e → deploy-production
+#
+# 使用方式:
+#   1. git add . && git commit -m "xxx"
+#   2. git push origin main
+#   3. 去 GitHub → Actions 标签看流水线执行
+#   4. 全部绿色 → 部署成功
+# ============================================================
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+# ============================================================
+# Job 1: Test — 单元测试 + 路径验证
+# ============================================================
+jobs:
+  test:
+    name: "🧪 CI: 单元测试"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 运行 pytest（22 个测试用例）
+        run: |
+          python -m pytest tests/ -v --tb=short 2>&1 | tee pytest-report.txt
+
+      - name: 上传测试报告
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-report
+          path: pytest-report.txt
+
+  # ============================================================
+  # Job 2: Build — 构建 Python 包
+  # ============================================================
+  build:
+    name: "📦 Build: 构建"
+    needs: [test]
+    runs-on: ubuntu-latest
+    # PR 不构建，只有 push 才构建
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安装构建工具
+        run: pip install build
+
+      - name: 构建 Python 包
+        run: python -m build
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: 打印构建产物
+        run: ls -lh dist/
+
+  # ============================================================
+  # Job 3: Deploy Staging — 预发布 + 部署验证
+  # ============================================================
+  deploy-staging:
+    name: "🚀 Deploy: 预发布验证"
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安装依赖 + 构建包
+        run: |
+          pip install -r requirements.txt
+          pip install dist/*.whl
+
+      - name: 运行部署验证脚本（5 条路由路径全部验证）
+        run: |
+          python scripts/deploy_validate.py 2>&1 | tee deploy-validate.txt
+
+      - name: 上传部署验证报告
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deploy-validate
+          path: deploy-validate.txt
+
+  # ============================================================
+  # Job 4: E2E — 全流程评测
+  # ============================================================
+  e2e:
+    name: "🔬 E2E: 全流程评测"
+    needs: [deploy-staging]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安装依赖
+        run: |
+          pip install -r requirements.txt
+          pip install dist/*.whl
+
+      - name: 运行 E2E 路径验证
+        run: |
+          python -m pytest tests/test_e2e_paths.py tests/test_safety_paths.py -v --tb=short 2>&1 | tee e2e-pytest.txt
+
+      - name: 运行完整评测
+        env:
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+        run: |
+          python run_eval.py --report e2e-report.json 2>&1 | tee e2e-eval.txt
+
+      - name: 运行并发基准（快速验证）
+        run: |
+          python run_benchmark.py --concurrency 3 --requests 5 2>&1 | tee e2e-benchmark.txt
+
+      - name: 上传 E2E 报告
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-report
+          path: |
+            e2e-pytest.txt
+            e2e-report.json
+            e2e-eval.txt
+            e2e-benchmark.txt
+
+  # ============================================================
+  # Job 5: Deploy Production — 正式发布 GitHub Release
+  # ============================================================
+  deploy-production:
+    name: "🎯 Deploy: 正式发布"
+    needs: [e2e]
+    runs-on: ubuntu-latest
+    # 仅 push 到 main 才发布
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 下载构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: 生成版本号
+        id: version
+        run: |
+          VERSION="v1.1.$(date +'%Y%m%d%H%M%S')"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "版本号: $VERSION"
+
+      - name: 创建 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "Release ${{ steps.version.outputs.version }}"
+          body_path: CHANGELOG.md
+          files: dist/*
+          fail_on_unmatched_files: false
+
+      - name: 部署完成通知
+        run: |
+          echo "========================================"
+          echo "  ✅ 全流程 CI/CD 部署完成!"
+          echo "========================================"
+          echo "  版本: ${{ steps.version.outputs.version }}"
+          echo "  提交: ${{ github.sha }}"
+          echo "  触发: ${{ github.actor }}"
+          echo "========================================"

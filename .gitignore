@@ -3,9 +3,11 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.egg-info/
 .env
 .venv
 venv/
+langgraph_venv/
 
 # IDE
 .vscode/
@@ -17,3 +19,13 @@ Thumbs.db
 
 # Testing
 .pytest_cache/
+
+# Build
+dist/
+
+# Benchmark
+benchmark_*.json
+benchmark_report.html
+
+# Interview prep (local only)
+INTERVIEW_PREP.md

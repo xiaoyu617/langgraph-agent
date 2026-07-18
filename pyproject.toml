@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "langgraph-agent"
+version = "1.1.0"
+description = "LangGraph Agent reference architecture — conditional routing, explicit state, RAG, explainability"
+requires-python = ">=3.10"
+dependencies = [
+    "langgraph",
+    "langchain-core",
+    "langchain-community",
+    "dashscope",
+    "faiss-cpu",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+    "build",
+]
+
+[tool.setuptools.packages.find]
+include = ["langgraph_agent*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
