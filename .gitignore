@@ -29,3 +29,6 @@ benchmark_report.html
 
 # Interview prep (local only)
 INTERVIEW_PREP.md
+# Local setup (not for repo)
+github_ssh_key.pub
+push_to_github.sh
