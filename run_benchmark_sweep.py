@@ -66,7 +66,7 @@ def run_benchmark_level(concurrency: int, iterations: int) -> SweepResult:
     def worker(prompt, idx):
         try:
             with (
-                patch("langgraph_agent.conditional_graph.ChatTongyi", return_value=MOCK_CHAT),
+                patch("langgraph_agent.conditional_graph.create_chat_model", return_value=MOCK_CHAT),
                 patch("langgraph_agent.rag_utils.DashScopeEmbeddings", return_value=MOCK_EMBEDDINGS),
             ):
                 return run_single_request(graph, prompt, f"bench-{idx}")

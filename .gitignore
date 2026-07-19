@@ -32,3 +32,6 @@ INTERVIEW_PREP.md
 # Local setup (not for repo)
 github_ssh_key.pub
 push_to_github.sh
+
+# Local quality history
+.quality_history.json

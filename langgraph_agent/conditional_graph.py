@@ -2,7 +2,7 @@ from typing import TypedDict, List, Optional
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
-from langchain_community.chat_models import ChatTongyi
+from .models import create_chat_model
 
 from .tools import google_search
 from .rag_utils import build_vectorstore
@@ -110,7 +110,7 @@ def memory_update_node(state: GraphState) -> GraphState:
 
 def clarify_node(state: GraphState) -> GraphState:
     trace = state["trace"]
-    llm = ChatTongyi(model="qwen-plus", temperature=0)
+    llm = create_chat_model()
 
     resp = llm.invoke(f"请澄清用户的问题：{state['input']}")
 
@@ -157,7 +157,7 @@ def rag_retrieve_node(state: GraphState) -> GraphState:
 
 def rag_answer_node(state: GraphState) -> GraphState:
     trace = state["trace"]
-    llm = ChatTongyi(model="qwen-plus", temperature=0)
+    llm = create_chat_model()
 
     resp = llm.invoke(
         f"{state['rag_context']}\n\n问题：{state['input']}"
@@ -196,7 +196,7 @@ def search_node(state: GraphState) -> GraphState:
 
 def search_answer_node(state: GraphState) -> GraphState:
     trace = state["trace"]
-    llm = ChatTongyi(model="qwen-plus", temperature=0)
+    llm = create_chat_model()
 
     resp = llm.invoke(
         f"{state['search_result']}\n\n问题：{state['input']}"
@@ -217,7 +217,7 @@ def search_answer_node(state: GraphState) -> GraphState:
 
 def direct_answer_node(state: GraphState) -> GraphState:
     trace = state["trace"]
-    llm = ChatTongyi(model="qwen-plus", temperature=0)
+    llm = create_chat_model()
 
     query = (
         f"{state['last_subject']} 是什么？"

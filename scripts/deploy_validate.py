@@ -65,7 +65,7 @@ def check_graph_invoke():
     ]
 
     with (
-        patch("langgraph_agent.conditional_graph.ChatTongyi", return_value=MockChatModel()),
+        patch("langgraph_agent.conditional_graph.create_chat_model", return_value=MockChatModel()),
         patch("langgraph_agent.rag_utils.DashScopeEmbeddings", return_value=MockEmbeddings()),
     ):
         graph = build_graph()

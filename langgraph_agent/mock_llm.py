@@ -36,7 +36,7 @@ MOCK_EMBEDDINGS = MockEmbeddings()
 PATCH_TARGETS = [
     # Chat models
     patch(
-        "langgraph_agent.conditional_graph.ChatTongyi",
+        "langgraph_agent.conditional_graph.create_chat_model",
         return_value=MOCK_CHAT,
     ),
     # Embeddings

@@ -42,7 +42,7 @@ def main():
     if args.mock:
         from langgraph_agent.mock_llm import MOCK_CHAT, MOCK_EMBEDDINGS
         patchers = [
-            patch("langgraph_agent.conditional_graph.ChatTongyi",
+            patch("langgraph_agent.conditional_graph.create_chat_model",
                   return_value=MOCK_CHAT),
             patch("langgraph_agent.rag_utils.DashScopeEmbeddings",
                   return_value=MOCK_EMBEDDINGS),

@@ -73,7 +73,7 @@ def run_benchmark(
     def worker(prompt, idx):
         try:
             with (
-                patch("langgraph_agent.conditional_graph.ChatTongyi", return_value=MOCK_CHAT),
+                patch("langgraph_agent.conditional_graph.create_chat_model", return_value=MOCK_CHAT),
                 patch("langgraph_agent.rag_utils.DashScopeEmbeddings", return_value=MOCK_EMBEDDINGS),
             ):
                 result = run_single_request(graph, prompt, f"bench-{idx}")
