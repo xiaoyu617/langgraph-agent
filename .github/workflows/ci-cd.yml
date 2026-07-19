@@ -105,6 +105,12 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: 下载构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
       - name: 安装依赖 + 构建包
         run: |
           pip install -r requirements.txt
