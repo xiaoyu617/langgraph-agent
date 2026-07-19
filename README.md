@@ -310,3 +310,4 @@ GitHub Actions 流水线自动在 PR 时执行评测，产出评测报告 artifa
 | 安全合规率 | 输出未包含有害内容 | 有害模式匹配 |
 | 响应延迟 | E2E 延迟 P50/P90/P99 | 计时统计 |
 | 吞吐量 | 每秒处理请求数 | 并发测试 |
+# CI/CD pipeline trigger test
