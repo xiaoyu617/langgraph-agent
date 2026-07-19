@@ -14,12 +14,22 @@ import os
 import sys
 from unittest.mock import patch
 
+
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+from langgraph_agent.observability import print_tracing_status
 from langgraph_agent.conditional_graph import build_graph
 from langgraph_agent.trace_replay import replay_trace_text
 from langgraph_agent.models import print_supported_models
 
 
 def main():
+
+    print_tracing_status()
     parser = argparse.ArgumentParser(description="LangGraph Agent CLI Demo")
     parser.add_argument("--show-trace", action="store_true",
                         help="显示每次执行的详细 Trace")

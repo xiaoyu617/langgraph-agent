@@ -311,3 +311,42 @@ GitHub Actions 流水线自动在 PR 时执行评测，产出评测报告 artifa
 | 响应延迟 | E2E 延迟 P50/P90/P99 | 计时统计 |
 | 吞吐量 | 每秒处理请求数 | 并发测试 |
 # CI/CD pipeline trigger test
+
+## 🔍 可观测性 (LangSmith)
+
+项目集成 LangSmith 实时追踪所有 LLM 调用。
+
+### 快速开始
+
+```bash
+# 1. 复制环境变量模板
+cp .env.example .env
+
+# 2. 编辑 .env，填入你的 LangSmith API Key
+#    去 https://smith.langchain.com 获取
+vim .env
+
+# 3. 运行，自动加载 .env 并上报 trace
+python chat.py
+```
+
+### 环境变量
+
+| 变量 | 必填 | 说明 |
+|------|------|------|
+| `LANGCHAIN_TRACING_V2` | 是 | 设为 `true` 启用 |
+| `LANGCHAIN_API_KEY` | 是 | LangSmith API Key |
+| `LANGCHAIN_PROJECT` | 否 | 项目名，默认 `langgraph-agent` |
+
+### 效果
+
+启用后每次对话的完整 trace 自动上报到 LangSmith 后台，可以看到：
+
+- 每次 LLM 调用的输入/输出
+- Token 消耗
+- 延迟分布（P50/P90/P99）
+- 完整的调用链路
+
+### 不用 LangSmith 也能用
+
+不配环境变量不影响项目任何功能，只是不上报 trace。
