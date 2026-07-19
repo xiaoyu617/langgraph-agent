@@ -1,0 +1,64 @@
+# 这个文件是演示用的 K8s CI/CD 流水线
+# 和 .github/workflows/ci-cd.yml 对比，看单体 vs K8s 的区别
+
+name: CI/CD Pipeline (K8s Demo)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests/ -v
+
+  build-and-push:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      # K8s 和单体项目的核心区别：构建产物从 whl 变成 Docker 镜像
+      - name: 构建 Docker 镜像
+        run: docker build -t langgraph-agent:${{ github.sha }} .
+      
+      - name: 推送到镜像仓库
+        run: |
+          docker tag langgraph-agent:${{ github.sha }} registry.cn-hangzhou/langgraph-agent:${{ github.sha }}
+          docker push registry.cn-hangzhou/langgraph-agent:${{ github.sha }}
+
+  deploy-staging:
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    steps:
+      # K8s 部署的核心操作：更新镜像版本
+      - name: 部署到 K8s 测试环境
+        run: |
+          kubectl set image deployment/langgraph-agent \
+            agent=registry.cn-hangzhou/langgraph-agent:${{ github.sha }}
+
+  e2e:
+    needs: [deploy-staging]
+    runs-on: ubuntu-latest
+    steps:
+      - run: python run_eval.py --report e2e-report.json
+        env:
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+
+  deploy-production:
+    needs: [e2e]
+    environment: production  # 需要人工审批
+    runs-on: ubuntu-latest
+    steps:
+      # 灰度发布：先更新 1 个 Pod，观察没问题再全量
+      - name: 金丝雀发布 (10%)
+        run: |
+          kubectl set image deployment/langgraph-agent canary=registry.cn-hangzhou/langgraph-agent:${{ github.sha }}
+      
+      - name: 全量发布
+        run: |
+          kubectl set image deployment/langgraph-agent agent=registry.cn-hangzhou/langgraph-agent:${{ github.sha }}
