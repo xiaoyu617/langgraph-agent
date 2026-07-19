@@ -54,7 +54,7 @@ def router_node(state: GraphState) -> GraphState:
     need_rag = (
         not need_clarify
         and not is_subject_confirm
-        and any(p in input_text for p in ["是什么", "介绍"])
+        and any(p in input_text for p in ["是什么", "介绍", "解释", "概念", "什么是", "含义"])
     )
     need_search = (
         not need_clarify
