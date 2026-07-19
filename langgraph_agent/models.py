@@ -64,7 +64,7 @@ def create_chat_model(
     if provider == "dashscope":
         model_name = model or os.environ.get("DASHSCOPE_MODEL", "qwen-plus")
         try:
-            from langchain_community.chat_models import ChatTongyi
+            from langgraph_agent._chat_tongyi_fix import ChatTongyiWithTokenUsage as ChatTongyi
             return ChatTongyi(model=model_name, temperature=temperature)
         except ImportError:
             raise ImportError(
