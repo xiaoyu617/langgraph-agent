@@ -1,4 +1,4 @@
-from langchain_community.embeddings import DashScopeEmbeddings
+from .models import create_embeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 
@@ -16,5 +16,5 @@ def build_vectorstore():
             )
         )
     ]
-    embeddings = DashScopeEmbeddings()
+    embeddings = create_embeddings()
     return FAISS.from_documents(docs, embeddings)

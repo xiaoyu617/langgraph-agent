@@ -54,7 +54,7 @@ def main():
         patchers = [
             patch("langgraph_agent.conditional_graph.create_chat_model",
                   return_value=MOCK_CHAT),
-            patch("langgraph_agent.rag_utils.DashScopeEmbeddings",
+            patch("langgraph_agent.rag_utils.create_embeddings",
                   return_value=MOCK_EMBEDDINGS),
         ]
         for p in patchers:
@@ -63,6 +63,7 @@ def main():
     graph = build_graph()
     thread_id = "cli-session"
     trace = []
+    conversation_history = []
 
     print("=" * 50)
     print("  LangGraph Agent CLI  Demo")
@@ -91,10 +92,11 @@ def main():
         # 调用 Agent
         try:
             result = graph.invoke(
-                {"input": user_input, "trace": trace},
+                {"input": user_input, "trace": trace, "conversation_history": conversation_history},
                 config={"configurable": {"thread_id": thread_id}}
             )
             trace = result["trace"]
+            conversation_history = result.get("conversation_history", [])
         except Exception as e:
             print(f"❌ 错误: {e}")
             continue

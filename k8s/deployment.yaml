@@ -17,10 +17,13 @@ spec:
       containers:
       - name: agent
         image: langgraph-agent:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
         env:
         - name: LLM_PROVIDER
+          value: "mock"
+        - name: EMBEDDING_PROVIDER
           value: "mock"
         resources:
           requests:

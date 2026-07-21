@@ -34,14 +34,12 @@ MOCK_EMBEDDINGS = MockEmbeddings()
 
 
 PATCH_TARGETS = [
-    # Chat models
     patch(
         "langgraph_agent.conditional_graph.create_chat_model",
         return_value=MOCK_CHAT,
     ),
-    # Embeddings
     patch(
-        "langgraph_agent.rag_utils.DashScopeEmbeddings",
+        "langgraph_agent.rag_utils.create_embeddings",
         return_value=MOCK_EMBEDDINGS,
     ),
 ]

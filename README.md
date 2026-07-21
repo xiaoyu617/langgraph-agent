@@ -1,352 +1,128 @@
-# LangGraph Agent Reference Architecture
+# LangGraph Agent — 可观测性 & 可测试性 Demo
 
-**Conditional Routing · Explicit State · RAG · Explainability · Qwen**
+## 项目定位
 
----
+一个基于 LangGraph 框架的智能体（Agent）参考实现，核心目标是**探索 Agent 系统的可测试性和可观测性方案**。适用于面试展示 Agent 开发能力和测试体系设计能力。
 
-## 📌 Overview
+## 技术栈
 
-This repository contains a **production‑grade reference implementation of a LangGraph‑based Agent system**.  
-The goal is to demonstrate how to build an LLM Agent that is **controllable, explainable, testable, and extensible**, rather than a prompt‑driven black box.
+| 技术 | 用途 |
+|------|------|
+| Python 3.11 | 开发语言 |
+| LangGraph | Agent 图编排框架（StateGraph、条件边、MemorySaver） |
+| LangChain | LLM 调用、Tool 封装、RAG 向量库 |
+| LangSmith | 可观测性 Trace 链路追踪 |
+| FAISS | 向量检索（RAG 知识库） |
+| Pytest + Mock | 单元测试与路径验证 |
+| GitHub Actions | CI/CD 五阶段流水线 |
 
-The system is implemented as a **single‑agent architecture (v1.0)** and designed to evolve naturally into **multi‑agent systems** in later versions.
-
----
-
-## 🎯 Design Goals
-
-The project intentionally avoids common anti‑patterns seen in many LLM agent demos:
-
-- ❌ Prompt‑history as memory
-- ❌ LLM‑decides‑everything control flow
-- ❌ RAG hidden inside prompts
-- ❌ No trace, no explainability, no tests
-
-Instead, it focuses on:
-
-- ✅ **Explicit state modeling**
-- ✅ **Graph‑controlled decision flow**
-- ✅ **Memory as structured slots**
-- ✅ **RAG as a first‑class path in the graph**
-- ✅ **Node‑level trace & replay**
-- ✅ **Deterministic pytest validation**
-
----
-
-## 🧱 Architecture Summary
+## 核心架构
 
 ```
-User Input
-   ↓
-Router (decision node)
-   ├─ memory_update   (confirm subject)
-   ├─ clarify         (resolve ambiguity)
-   ├─ rag_retrieve    (internal knowledge)
-   │      ↓
-   │   rag_answer
-   ├─ search          (external tool)
-   │      ↓
-   │   search_answer
-   └─ direct_answer
+                    User Input
+                        │
+                    ┌───┴───┐
+                    │ Router│ ← 规则路由（确定可预测）
+                    └───┬───┘
+                        │
+          ┌─────────────┼──────────────┐
+          │             │              │
+    ┌─────┴────┐  ┌────┴────┐  ┌──────┴──────┐
+    │    RAG   │  │  Search │  │ Direct      │
+    │ Retrieve │  │  Tool   │  │ Answer      │
+    └────┬─────┘  └────┬────┘  └──────┬──────┘
+         │             │              │
+    ┌────┴────┐   ┌────┴────┐        │
+    │ RAG     │   │ Search  │        │
+    │ Answer  │   │ Answer  │        │
+    └────┬────┘   └────┬────┘        │
+         └──────┬──────┘             │
+                └──────┬─────────────┘
+                       │
+                  ┌────┴────┐
+                  │  Output │
+                  └─────────┘
 ```
 
-Control flow is **system‑driven**, not model‑driven.
+### 5 条路由路径
 
----
+| 路径 | 触发条件 | 节点链 |
+|------|---------|--------|
+| 主体确认 | 输入含"我指的是/我说的是" | router → memory_update |
+| 需澄清 | 有代词但无上下文 | router → clarify |
+| RAG 查询 | 含"是什么/介绍/解释/概念" | router → rag_retrieve → rag_answer |
+| 搜索 | 含"搜索/官网/查" | router → search → search_answer |
+| 直接回答 | 其他 | router → direct_answer |
 
-## 🧠 State Modeling (Industrial Pattern)
-
-The Agent state is explicitly split into three conceptual layers.
-
-### 1️⃣ ConversationState (Long‑lived)
-
-```python
-class ConversationState(TypedDict):
-    input: str
-    last_subject: Optional[str]
-    trace: List[dict]
-```
-
-- `input`: current user turn
-- `last_subject`: structured memory slot
-- `trace`: execution facts for explainability
-
-This layer is persisted across turns via LangGraph **MemorySaver**.
-
----
-
-### 2️⃣ DerivedState (Per‑turn decisions)
-
-```python
-class DerivedState(TypedDict):
-    is_subject_confirm: bool
-    need_clarify: bool
-    need_rag: bool
-    need_search: bool
-```
-
-- Computed by the router each turn
-- Never stored as long‑term memory
-
----
-
-### 3️⃣ WorkingState (Intermediate artifacts)
-
-```python
-class WorkingState(TypedDict, total=False):
-    rag_query: str
-    rag_context: str
-    search_result: str
-    output: str
-```
-
-- Exists only on relevant paths
-- Keeps intermediate data logically isolated
-
----
-
-### ✅ Final GraphState
-
-```python
-class GraphState(ConversationState, DerivedState, WorkingState):
-    pass
-```
-
-This layered modeling is a key difference between **demo agents** and **production agents**.
-
----
-
-## 🔀 Routing Logic
-
-The router enforces a strict priority order:
-
-1. **Subject Confirmation** → `memory_update`
-2. **Ambiguity Detected** → `clarify`
-3. **Conceptual Question** → `rag_retrieve → rag_answer`
-4. **Lookup / Search Request** → `search → search_answer`
-5. **Fallback** → `direct_answer`
-
-Routing is implemented with **LangGraph conditional edges**, not LLM reasoning.
-
----
-
-## 🗄 Explicit Memory Design
-
-Memory is represented as a **structured slot** (`last_subject`):
-
-```text
-User: 我指的是 LangChain
-→ memory_update(last_subject="LangChain")
-```
-
-Benefits:
-
-- Deterministic coreference resolution
-- Safe cross‑turn reuse
-- Works with RAG query rewrite
-- Fully testable
-
----
-
-## 📚 RAG as a Graph Path
-
-RAG is implemented as a **dedicated graph branch**, not embedded in prompts.
-
-Flow:
+### 多 Agent 协调架构
 
 ```
-router → rag_retrieve → rag_answer
+User Input → Coordinator → test_generator → test_executor
+                          → result_analyzer → report_generator
 ```
 
-Key features:
+实现智能测试闭环：需求转换 → 用例生成 → 测试执行 → 结果分析 → 报告生成。
 
-- Vector store built with DashScope Embeddings + FAISS
-- Query rewrite using structured memory
-- Context injection isolated from control logic
-
----
-
-## 🔍 Trace & Explainability
-
-### Trace
-
-Trace captures **what actually happened**, not model thoughts:
-
-```json
-{
-  "node": "router",
-  "input": "能详细介绍一下",
-  "last_subject": "LangChain",
-  "decision": { "rag": true }
-}
-```
-
-### Replay
-
-Replay reconstructs execution for humans and systems:
-
-```
-[1] router → rag
-[2] rag_retrieve → query rewrite
-[3] rag_answer → final response
-```
-
-Both text and JSON replay are supported.
-
----
-
-## 🧪 Testing Strategy
-
-Tests verify **behavior**, not raw text:
-
-- Routing correctness
-- Memory usage
-- RAG query rewriting
-- Trace structure integrity
-
-Example:
-
-```python
-assert "LangChain" in rag_step["rag_query"]
-```
-
-This ensures the system is **regression‑safe**.
-
----
-
-## 🧠 Technology Stack
-
-- LangGraph
-- LangChain Core
-- Qwen / ChatTongyi
-- DashScope Embeddings
-- FAISS
-- Python
-- pytest
-
----
-
-## ✅ Current Status (v1.0)
-
-- [x] Single‑agent LangGraph system
-- [x] Explicit state modeling
-- [x] Structured memory slots
-- [x] RAG integration
-- [x] Explainable trace & replay
-- [x] pytest coverage
-
----
-
-## 🚧 Roadmap
-
-- [ ] Multi‑Agent Coordinator (Planner + Functional Agents)
-- [ ] Agent‑to‑Agent communication
-- [ ] Verification / Critic Agents
-- [ ] Governance & policy enforcement
-
----
-
-## 🏁 Final Notes
-
-This project demonstrates that **LLM Agents should be designed as systems**, not prompts.
-
-Control, explainability, and testability are first‑class citizens of the architecture.
-
----
-
-## 📊 测试与评测体系 (v1.1)
-
-### 测试数据集
-
-结构化 JSON 测试用例集，覆盖所有路由路径：
-
-| 分类 | 路径 | 用例数 |
-|------|------|--------|
-| Memory | `memory_update` | 3 |
-| Clarify | `clarify` | 3 |
-| RAG | `rag_retrieve → rag_answer` | 3 |
-| Search | `search → search_answer` | 3 |
-| Direct | `direct_answer` | 2 |
-| Safety | 安全合规 | 2 |
-| Edge | 边界条件 | 3 |
-| Multi-turn | 多轮对话 | 1 |
-
-### 评测维度
-
-`langgraph_agent/evaluator.py` 提供多维度评测：
-
-- **Path Accuracy**: 路由路径是否与预期一致
-- **Accuracy**: 输出是否包含预期关键词 / 事实
-- **Hallucination**: 不确定表达检测
-- **Safety**: 有害内容检测
-- **Latency**: 端到端延迟
-
-### 运行方式
+## 快速开始
 
 ```bash
-# 路径验证测试
-pytest tests/test_e2e_paths.py -v
+# 1. 创建虚拟环境
+python3 -m venv .venv
+source .venv/bin/activate
 
-# 完整评测
-python run_eval.py --report eval-report.json
+# 2. 安装依赖
+pip install -r requirements.txt
 
-# 性能基准测试
-python run_benchmark.py --concurrency 5 --requests 20
+# 3. Mock 模式运行（不需要 API Key）
+python chat.py --mock
+
+# 4. 运行测试
+python -m pytest tests/ -v
 ```
 
-### CI/CD
+## 测试体系
 
-GitHub Actions 流水线自动在 PR 时执行评测，产出评测报告 artifact。
+- **22 个 pytest 测试用例**：覆盖 5 条路由路径、Edge Case、Safety、多轮对话
+- **Mock 隔离**：MockChatModel + MockEmbeddings，测试不依赖外部 API
+- **路径验证**：不验证 LLM 具体输出，验证 Agent 走了正确的决策路径
+- **部署验证**：deploy_validate.py 验证 5 条路由全部正常
 
----
+## CI/CD 流水线
 
-## 📈 质量指标概览
-
-| 指标 | 描述 | 方法 |
-|------|------|------|
-| 路径准确率 | Agent 走对了路由 | Trace 节点比对 |
-| 输出准确性 | 输出包含预期事实 | 关键词/语义匹配 |
-| 幻觉率 | 输出中不确定/虚构内容 | 不确定性短语检测 |
-| 安全合规率 | 输出未包含有害内容 | 有害模式匹配 |
-| 响应延迟 | E2E 延迟 P50/P90/P99 | 计时统计 |
-| 吞吐量 | 每秒处理请求数 | 并发测试 |
-# CI/CD pipeline trigger test
-
-## 🔍 可观测性 (LangSmith)
-
-项目集成 LangSmith 实时追踪所有 LLM 调用。
-
-### 快速开始
-
-```bash
-# 1. 复制环境变量模板
-cp .env.example .env
-
-# 2. 编辑 .env，填入你的 LangSmith API Key
-#    去 https://smith.langchain.com 获取
-vim .env
-
-# 3. 运行，自动加载 .env 并上报 trace
-python chat.py
+```yaml
+test → build → deploy-staging → e2e → deploy-production
 ```
 
-### 环境变量
+五阶段质量门禁，GitHub Actions 实现。提交代码自动触发，分阶段验证。
 
-| 变量 | 必填 | 说明 |
-|------|------|------|
-| `LANGCHAIN_TRACING_V2` | 是 | 设为 `true` 启用 |
-| `LANGCHAIN_API_KEY` | 是 | LangSmith API Key |
-| `LANGCHAIN_PROJECT` | 否 | 项目名，默认 `langgraph-agent` |
+## 项目结构
 
-### 效果
-
-启用后每次对话的完整 trace 自动上报到 LangSmith 后台，可以看到：
-
-- 每次 LLM 调用的输入/输出
-- Token 消耗
-- 延迟分布（P50/P90/P99）
-- 完整的调用链路
-
-### 不用 LangSmith 也能用
-
-不配环境变量不影响项目任何功能，只是不上报 trace。
+```
+langgraph-agent/
+├── chat.py                          # CLI 交互入口
+├── server.py                        # HTTP 服务（K8s 部署用）
+├── langgraph_agent/
+│   ├── conditional_graph.py        # 核心：LangGraph 状态图定义
+│   ├── models.py                   # 多模型切换工厂
+│   ├── tools.py                    # Tool 封装（搜索引擎）
+│   ├── rag_utils.py                # RAG 知识库构建
+│   ├── multi_agent.py              # 多 Agent 协调架构
+│   ├── evaluator_advanced.py       # 多维评测（语义/幻觉/性能）
+│   ├── observability.py            # LangSmith Trace 配置
+│   └── quality_monitor.py          # 质量监控
+├── tests/
+│   ├── mock_llm.py                 # 全局 Mock 配置
+│   ├── conftest.py                 # pytest 共享夹具
+│   ├── test_conditional_graph.py
+│   ├── test_e2e_paths.py
+│   └── test_safety_paths.py
+├── scripts/
+│   └── deploy_validate.py          # 部署后验证
+├── .github/workflows/
+│   └── ci-cd.yml                   # CI/CD 五阶段流水线
+├── k8s/
+│   ├── deployment.yaml             # K8s 部署配置
+│   └── ci-cd-k8s-demo.yml          # K8s CI/CD 流水线（Demo）
+├── Dockerfile                      # 容器化部署
+└── requirements.txt
+```

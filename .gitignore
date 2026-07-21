@@ -35,3 +35,7 @@ push_to_github.sh
 
 # Local quality history
 .quality_history.json
+
+# 面试准备资料（不上传）
+解释_*.md
+北汽面试速查卡.md
